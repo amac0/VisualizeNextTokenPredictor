@@ -44,4 +44,4 @@ This allows you to interactively explore the model's decision-making process and
 
 ## License
 
-MIT
+MIT (to the extent copyrightable)
