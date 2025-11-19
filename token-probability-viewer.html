@@ -127,21 +127,24 @@
         }
 
         .token {
-            display: inline-block;
+            display: inline;
             position: relative;
-            padding: 2px 4px;
-            margin: 2px 0;
+            padding: 2px 1px;
+            margin: 0;
             cursor: pointer;
             border-radius: 3px;
-            transition: background 0.2s;
+            transition: background 0.2s, box-shadow 0.2s;
+            white-space: pre-wrap;
         }
 
         .token:hover {
             background: #e3f2fd;
+            box-shadow: 0 0 0 1px #90caf9;
         }
 
         .token.active {
             background: #bbdefb;
+            box-shadow: 0 0 0 2px #64b5f6;
         }
 
         .probability-dropdown {
@@ -245,8 +248,70 @@
         }
 
         .token.regenerating {
-            opacity: 0.3;
+            animation: fadeOut 0.3s ease-out forwards;
             pointer-events: none;
+        }
+
+        .token.newly-generated {
+            animation: fadeIn 0.4s ease-in;
+        }
+
+        .token.regenerated-highlight {
+            animation: highlightPulse 1s ease-in-out;
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes highlightPulse {
+            0%, 100% {
+                background-color: transparent;
+            }
+            50% {
+                background-color: rgba(33, 150, 243, 0.2);
+            }
+        }
+
+        .token.prob-high {
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+
+        .token.prob-high:hover {
+            background-color: rgba(76, 175, 80, 0.25);
+        }
+
+        .token.prob-medium {
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+
+        .token.prob-medium:hover {
+            background-color: rgba(255, 193, 7, 0.25);
+        }
+
+        .token.prob-low {
+            background-color: rgba(244, 67, 54, 0.1);
+        }
+
+        .token.prob-low:hover {
+            background-color: rgba(244, 67, 54, 0.25);
         }
 
         .token-info {
@@ -255,6 +320,83 @@
             color: #999;
             font-size: 11px;
             vertical-align: super;
+        }
+
+        .token-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-8px);
+            background: rgba(33, 33, 33, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .token:hover .token-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        .token-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(33, 33, 33, 0.95);
+        }
+
+        .tooltip-row {
+            display: block;
+            margin: 2px 0;
+        }
+
+        .tooltip-label {
+            color: #aaa;
+            margin-right: 6px;
+        }
+
+        .tooltip-value {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .prompt-text {
+            display: inline-block;
+            color: #666;
+            background: rgba(158, 158, 158, 0.08);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-right: 4px;
+            border-left: 3px solid #999;
+            font-style: italic;
+        }
+
+        .prompt-label {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .generation-marker {
+            display: block;
+            height: 1px;
+            background: linear-gradient(to right, #ddd 0%, transparent 100%);
+            margin: 12px 0;
         }
     </style>
 </head>
@@ -291,6 +433,35 @@
                 </div>
             </div>
 
+            <div class="inline-group">
+                <div class="input-group">
+                    <label for="temperature">
+                        Temperature: <span id="tempValue">1.0</span>
+                        <span style="font-size: 11px; color: #888; font-weight: normal;">(randomness)</span>
+                    </label>
+                    <input type="range" id="temperature" min="0" max="2" step="0.1" value="1.0"
+                           style="width: 100%;" oninput="document.getElementById('tempValue').textContent = this.value">
+                </div>
+
+                <div class="input-group">
+                    <label for="topP">
+                        Top P: <span id="topPValue">1.0</span>
+                        <span style="font-size: 11px; color: #888; font-weight: normal;">(nucleus sampling)</span>
+                    </label>
+                    <input type="range" id="topP" min="0" max="1" step="0.05" value="1.0"
+                           style="width: 100%;" oninput="document.getElementById('topPValue').textContent = this.value">
+                </div>
+
+                <div class="input-group">
+                    <label for="presencePenalty">
+                        Presence Penalty: <span id="presenceValue">0.0</span>
+                        <span style="font-size: 11px; color: #888; font-weight: normal;">(topic diversity)</span>
+                    </label>
+                    <input type="range" id="presencePenalty" min="-2" max="2" step="0.1" value="0"
+                           style="width: 100%;" oninput="document.getElementById('presenceValue').textContent = this.value">
+                </div>
+            </div>
+
             <div class="input-group">
                 <label for="prompt">Prompt:</label>
                 <textarea id="prompt" placeholder="Enter your prompt here...">The quick brown fox</textarea>
@@ -301,6 +472,12 @@
 
         <div class="info-box">
             Click on any token to see alternative predictions and their probabilities. Select an alternative to regenerate all subsequent tokens from that point.
+            <div style="margin-top: 8px;">
+                <button id="undoBtn" onclick="undoLastChange()" style="padding: 6px 12px; font-size: 13px;" disabled>
+                    ← Undo Last Change
+                </button>
+                <span id="historyInfo" style="margin-left: 10px; color: #666; font-size: 12px;"></span>
+            </div>
         </div>
 
         <div class="output-section">
@@ -315,6 +492,7 @@
         let tokensData = [];
         let originalPrompt = '';
         let isRegenerating = false;
+        let historyStack = [];
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
@@ -329,6 +507,77 @@
                 currentDropdown = null;
             }
             document.querySelectorAll('.token.active').forEach(t => t.classList.remove('active'));
+        }
+
+        function createTooltip(tokenIndex, topProbability, alternativesCount) {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'token-tooltip';
+
+            tooltip.innerHTML = `
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Position:</span>
+                    <span class="tooltip-value">#${tokenIndex + 1}</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Probability:</span>
+                    <span class="tooltip-value">${topProbability.toFixed(2)}%</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Alternatives:</span>
+                    <span class="tooltip-value">${alternativesCount}</span>
+                </div>
+            `;
+
+            return tooltip;
+        }
+
+        function saveToHistory() {
+            // Save current state to history
+            const container = document.getElementById('tokensContainer');
+            historyStack.push({
+                tokensData: JSON.parse(JSON.stringify(tokensData)),
+                html: container.innerHTML
+            });
+            updateHistoryUI();
+        }
+
+        function updateHistoryUI() {
+            const undoBtn = document.getElementById('undoBtn');
+            const historyInfo = document.getElementById('historyInfo');
+
+            undoBtn.disabled = historyStack.length === 0;
+
+            if (historyStack.length > 0) {
+                historyInfo.textContent = `${historyStack.length} change${historyStack.length > 1 ? 's' : ''} in history`;
+            } else {
+                historyInfo.textContent = '';
+            }
+        }
+
+        function undoLastChange() {
+            if (historyStack.length === 0) return;
+
+            const previousState = historyStack.pop();
+            const container = document.getElementById('tokensContainer');
+
+            // Restore the previous state
+            tokensData = previousState.tokensData;
+            container.innerHTML = previousState.html;
+
+            // Re-attach event listeners to tokens
+            const tokenSpans = container.querySelectorAll('.token');
+            tokenSpans.forEach((tokenSpan, index) => {
+                if (index < tokensData.length) {
+                    const tokenData = tokensData[index];
+                    tokenSpan.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showDropdown(tokenSpan, tokenData.alternatives, index);
+                    });
+                }
+            });
+
+            updateHistoryUI();
+            closeDropdown();
         }
 
         function showDropdown(tokenElement, alternatives, tokenIndex) {
@@ -405,10 +654,16 @@
             if (isRegenerating) return;
             isRegenerating = true;
 
+            // Save current state to history before regenerating
+            saveToHistory();
+
             const apiKey = document.getElementById('apiKey').value.trim();
             const model = document.getElementById('model').value;
             const maxTokens = parseInt(document.getElementById('maxTokens').value) || 50;
             const topLogprobs = parseInt(document.getElementById('topLogprobs').value) || 5;
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const topP = parseFloat(document.getElementById('topP').value);
+            const presencePenalty = parseFloat(document.getElementById('presencePenalty').value);
 
             const container = document.getElementById('tokensContainer');
             const generateBtn = document.getElementById('generateBtn');
@@ -423,10 +678,17 @@
                 const tokensGenerated = tokensData.length;
                 const remainingTokens = Math.max(1, maxTokens - (tokenIndex + 1));
 
-                // Remove all tokens after this index from display
+                // Animate removal of tokens after this index
                 const allTokenSpans = container.querySelectorAll('.token');
+                const tokensToRemove = [];
                 for (let i = tokenIndex + 1; i < allTokenSpans.length; i++) {
                     allTokenSpans[i].classList.add('regenerating');
+                    tokensToRemove.push(allTokenSpans[i]);
+                }
+
+                // Wait for fade-out animation to complete
+                if (tokensToRemove.length > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
                 }
 
                 // Generate new tokens
@@ -439,6 +701,9 @@
                         prompt: newPrompt,
                         max_tokens: remainingTokens,
                         logprobs: topLogprobs,
+                        temperature: temperature,
+                        top_p: topP,
+                        presence_penalty: presencePenalty,
                         stream: false,
                         echo: false
                     };
@@ -452,6 +717,9 @@
                         max_tokens: remainingTokens,
                         logprobs: true,
                         top_logprobs: topLogprobs,
+                        temperature: temperature,
+                        top_p: topP,
+                        presence_penalty: presencePenalty,
                         stream: false
                     };
                 }
@@ -499,11 +767,14 @@
                     allTokenSpans[i].remove();
                 }
 
-                // Add new tokens
+                // Add new tokens with staggered animation
                 tokens.forEach((token, index) => {
                     const tokenSpan = document.createElement('span');
-                    tokenSpan.className = 'token';
+                    tokenSpan.className = 'token newly-generated regenerated-highlight';
                     tokenSpan.textContent = token;
+
+                    // Stagger the animation slightly for each token
+                    tokenSpan.style.animationDelay = `${index * 0.05}s`;
 
                     const alternatives = [];
                     const topLogprobsForToken = logprobs[index];
@@ -514,7 +785,22 @@
 
                     alternatives.push(...sortedAlts);
 
+                    // Add probability-based color coding
+                    const topProb = Math.exp(sortedAlts[0].logprob) * 100;
+                    if (topProb >= 50) {
+                        tokenSpan.classList.add('prob-high');
+                    } else if (topProb >= 20) {
+                        tokenSpan.classList.add('prob-medium');
+                    } else {
+                        tokenSpan.classList.add('prob-low');
+                    }
+
                     const newTokenIndex = tokensData.length;
+
+                    // Add tooltip
+                    const tooltip = createTooltip(newTokenIndex, topProb, alternatives.length);
+                    tokenSpan.appendChild(tooltip);
+
                     tokensData.push({
                         token: token,
                         alternatives: alternatives,
@@ -527,6 +813,12 @@
                     });
 
                     container.appendChild(tokenSpan);
+
+                    // Remove animation classes after they complete
+                    setTimeout(() => {
+                        tokenSpan.classList.remove('newly-generated', 'regenerated-highlight');
+                        tokenSpan.style.animationDelay = '';
+                    }, 1400 + (index * 50));
                 });
 
             } catch (error) {
@@ -546,6 +838,9 @@
             const prompt = document.getElementById('prompt').value;
             const maxTokens = parseInt(document.getElementById('maxTokens').value) || 50;
             const topLogprobs = parseInt(document.getElementById('topLogprobs').value) || 5;
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const topP = parseFloat(document.getElementById('topP').value);
+            const presencePenalty = parseFloat(document.getElementById('presencePenalty').value);
 
             if (!apiKey) {
                 alert('Please enter your OpenAI API key');
@@ -562,6 +857,8 @@
             generateBtn.disabled = true;
             tokensData = [];
             originalPrompt = prompt;
+            historyStack = [];
+            updateHistoryUI();
             closeDropdown();
 
             try {
@@ -576,6 +873,9 @@
                         prompt: prompt,
                         max_tokens: maxTokens,
                         logprobs: topLogprobs,
+                        temperature: temperature,
+                        top_p: topP,
+                        presence_penalty: presencePenalty,
                         stream: false,
                         echo: false
                     };
@@ -590,6 +890,9 @@
                         max_tokens: maxTokens,
                         logprobs: true,
                         top_logprobs: topLogprobs,
+                        temperature: temperature,
+                        top_p: topP,
+                        presence_penalty: presencePenalty,
                         stream: false
                     };
                 }
@@ -635,11 +938,26 @@
                     });
                 }
 
-                // Create a text node for the prompt
+                // Create a visual separation for the prompt
+                const promptLabel = document.createElement('span');
+                promptLabel.className = 'prompt-label';
+                promptLabel.textContent = 'Input Prompt';
+                container.appendChild(promptLabel);
+
                 const promptSpan = document.createElement('span');
-                promptSpan.style.color = '#999';
+                promptSpan.className = 'prompt-text';
                 promptSpan.textContent = prompt;
                 container.appendChild(promptSpan);
+
+                // Add a marker to separate prompt from generation
+                const marker = document.createElement('div');
+                marker.className = 'generation-marker';
+                container.appendChild(marker);
+
+                const genLabel = document.createElement('span');
+                genLabel.className = 'prompt-label';
+                genLabel.textContent = 'Generated Text';
+                container.appendChild(genLabel);
 
                 // Display each token
                 tokens.forEach((token, index) => {
@@ -656,6 +974,20 @@
                         .sort((a, b) => b.logprob - a.logprob);
 
                     alternatives.push(...sortedAlts);
+
+                    // Add probability-based color coding
+                    const topProb = Math.exp(sortedAlts[0].logprob) * 100;
+                    if (topProb >= 50) {
+                        tokenSpan.classList.add('prob-high');
+                    } else if (topProb >= 20) {
+                        tokenSpan.classList.add('prob-medium');
+                    } else {
+                        tokenSpan.classList.add('prob-low');
+                    }
+
+                    // Add tooltip
+                    const tooltip = createTooltip(index, topProb, alternatives.length);
+                    tokenSpan.appendChild(tooltip);
 
                     tokensData.push({
                         token: token,
