@@ -244,6 +244,11 @@
             font-size: 13px;
         }
 
+        .token.regenerating {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
         .token-info {
             display: inline-block;
             margin-left: 5px;
@@ -295,7 +300,7 @@
         </div>
 
         <div class="info-box">
-            Click on any token to see alternative predictions and their probabilities
+            Click on any token to see alternative predictions and their probabilities. Select an alternative to regenerate all subsequent tokens from that point.
         </div>
 
         <div class="output-section">
@@ -308,6 +313,8 @@
     <script>
         let currentDropdown = null;
         let tokensData = [];
+        let originalPrompt = '';
+        let isRegenerating = false;
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
@@ -369,12 +376,17 @@
 
                 dropdown.appendChild(wrapper);
 
-                // Allow clicking on alternative to replace token
-                item.addEventListener('click', (e) => {
+                // Allow clicking on alternative to replace token and regenerate
+                item.addEventListener('click', async (e) => {
                     e.stopPropagation();
+                    if (isRegenerating) return;
+
                     tokenElement.textContent = alt.token;
                     tokensData[tokenIndex].selectedToken = alt.token;
                     closeDropdown();
+
+                    // Regenerate from this point
+                    await regenerateFromToken(tokenIndex);
                 });
             });
 
@@ -386,6 +398,145 @@
             if (rect.right > window.innerWidth) {
                 dropdown.style.left = 'auto';
                 dropdown.style.right = '0';
+            }
+        }
+
+        async function regenerateFromToken(tokenIndex) {
+            if (isRegenerating) return;
+            isRegenerating = true;
+
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const model = document.getElementById('model').value;
+            const maxTokens = parseInt(document.getElementById('maxTokens').value) || 50;
+            const topLogprobs = parseInt(document.getElementById('topLogprobs').value) || 5;
+
+            const container = document.getElementById('tokensContainer');
+            const generateBtn = document.getElementById('generateBtn');
+            generateBtn.disabled = true;
+
+            try {
+                // Build the new prompt from original + selected tokens up to this point
+                const selectedTokens = tokensData.slice(0, tokenIndex + 1).map(t => t.selectedToken).join('');
+                const newPrompt = originalPrompt + selectedTokens;
+
+                // Calculate how many more tokens to generate
+                const tokensGenerated = tokensData.length;
+                const remainingTokens = Math.max(1, maxTokens - (tokenIndex + 1));
+
+                // Remove all tokens after this index from display
+                const allTokenSpans = container.querySelectorAll('.token');
+                for (let i = tokenIndex + 1; i < allTokenSpans.length; i++) {
+                    allTokenSpans[i].classList.add('regenerating');
+                }
+
+                // Generate new tokens
+                let endpoint, requestBody;
+
+                if (model.includes('instruct') || model.startsWith('text-') || model.startsWith('davinci') || model.startsWith('curie') || model.startsWith('babbage') || model.startsWith('ada')) {
+                    endpoint = 'https://api.openai.com/v1/completions';
+                    requestBody = {
+                        model: model,
+                        prompt: newPrompt,
+                        max_tokens: remainingTokens,
+                        logprobs: topLogprobs,
+                        stream: false,
+                        echo: false
+                    };
+                } else {
+                    endpoint = 'https://api.openai.com/v1/chat/completions';
+                    requestBody = {
+                        model: model,
+                        messages: [
+                            { role: 'user', content: newPrompt }
+                        ],
+                        max_tokens: remainingTokens,
+                        logprobs: true,
+                        top_logprobs: topLogprobs,
+                        stream: false
+                    };
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error?.message || 'API request failed');
+                }
+
+                const data = await response.json();
+
+                let tokens, logprobs;
+
+                if (endpoint.includes('completions') && !endpoint.includes('chat')) {
+                    const choice = data.choices[0];
+                    tokens = choice.logprobs.tokens;
+                    logprobs = choice.logprobs.top_logprobs;
+                } else {
+                    const choice = data.choices[0];
+                    if (!choice.logprobs || !choice.logprobs.content) {
+                        throw new Error('Model does not support logprobs.');
+                    }
+                    tokens = choice.logprobs.content.map(item => item.token);
+                    logprobs = choice.logprobs.content.map(item => {
+                        const alternatives = {};
+                        item.top_logprobs.forEach(alt => {
+                            alternatives[alt.token] = alt.logprob;
+                        });
+                        return alternatives;
+                    });
+                }
+
+                // Remove old tokens from data and display
+                tokensData = tokensData.slice(0, tokenIndex + 1);
+                for (let i = allTokenSpans.length - 1; i > tokenIndex; i--) {
+                    allTokenSpans[i].remove();
+                }
+
+                // Add new tokens
+                tokens.forEach((token, index) => {
+                    const tokenSpan = document.createElement('span');
+                    tokenSpan.className = 'token';
+                    tokenSpan.textContent = token;
+
+                    const alternatives = [];
+                    const topLogprobsForToken = logprobs[index];
+
+                    const sortedAlts = Object.entries(topLogprobsForToken)
+                        .map(([tok, logprob]) => ({ token: tok, logprob: logprob }))
+                        .sort((a, b) => b.logprob - a.logprob);
+
+                    alternatives.push(...sortedAlts);
+
+                    const newTokenIndex = tokensData.length;
+                    tokensData.push({
+                        token: token,
+                        alternatives: alternatives,
+                        selectedToken: token
+                    });
+
+                    tokenSpan.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showDropdown(tokenSpan, alternatives, newTokenIndex);
+                    });
+
+                    container.appendChild(tokenSpan);
+                });
+
+            } catch (error) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = `Error regenerating: ${error.message}`;
+                container.appendChild(errorDiv);
+            } finally {
+                isRegenerating = false;
+                generateBtn.disabled = false;
             }
         }
 
@@ -410,6 +561,7 @@
             container.appendChild(loading);
             generateBtn.disabled = true;
             tokensData = [];
+            originalPrompt = prompt;
             closeDropdown();
 
             try {
