@@ -379,6 +379,22 @@
             margin-right: 4px;
             border-left: 3px solid #999;
             font-style: italic;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .prompt-text.updated {
+            animation: promptUpdate 0.6s ease-out;
+        }
+
+        @keyframes promptUpdate {
+            0% {
+                background: rgba(76, 175, 80, 0.2);
+                color: #2e7d32;
+            }
+            100% {
+                background: rgba(158, 158, 158, 0.08);
+                color: #666;
+            }
         }
 
         .prompt-label {
@@ -536,7 +552,8 @@
             const container = document.getElementById('tokensContainer');
             historyStack.push({
                 tokensData: JSON.parse(JSON.stringify(tokensData)),
-                html: container.innerHTML
+                html: container.innerHTML,
+                originalPrompt: originalPrompt
             });
             updateHistoryUI();
         }
@@ -562,6 +579,7 @@
 
             // Restore the previous state
             tokensData = previousState.tokensData;
+            originalPrompt = previousState.originalPrompt;
             container.innerHTML = previousState.html;
 
             // Re-attach event listeners to tokens
@@ -674,14 +692,22 @@
                 const selectedTokens = tokensData.slice(0, tokenIndex + 1).map(t => t.selectedToken).join('');
                 const newPrompt = originalPrompt + selectedTokens;
 
-                // Calculate how many more tokens to generate
-                const tokensGenerated = tokensData.length;
-                const remainingTokens = Math.max(1, maxTokens - (tokenIndex + 1));
+                // Update the prompt display to show the extended prompt
+                const promptSpan = container.querySelector('.prompt-text');
+                if (promptSpan) {
+                    promptSpan.textContent = newPrompt;
+                    // Trigger update animation
+                    promptSpan.classList.add('updated');
+                    setTimeout(() => promptSpan.classList.remove('updated'), 600);
+                }
 
-                // Animate removal of tokens after this index
+                // Update originalPrompt for future regenerations
+                originalPrompt = newPrompt;
+
+                // Animate removal of ALL generated tokens
                 const allTokenSpans = container.querySelectorAll('.token');
                 const tokensToRemove = [];
-                for (let i = tokenIndex + 1; i < allTokenSpans.length; i++) {
+                for (let i = 0; i < allTokenSpans.length; i++) {
                     allTokenSpans[i].classList.add('regenerating');
                     tokensToRemove.push(allTokenSpans[i]);
                 }
@@ -691,7 +717,11 @@
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
 
-                // Generate new tokens
+                // Remove old tokens from data and display
+                tokensData = [];
+                allTokenSpans.forEach(span => span.remove());
+
+                // Generate new tokens with full maxTokens count
                 let endpoint, requestBody;
 
                 if (model.includes('instruct') || model.startsWith('text-') || model.startsWith('davinci') || model.startsWith('curie') || model.startsWith('babbage') || model.startsWith('ada')) {
@@ -699,7 +729,7 @@
                     requestBody = {
                         model: model,
                         prompt: newPrompt,
-                        max_tokens: remainingTokens,
+                        max_tokens: maxTokens,
                         logprobs: topLogprobs,
                         temperature: temperature,
                         top_p: topP,
@@ -714,7 +744,7 @@
                         messages: [
                             { role: 'user', content: newPrompt }
                         ],
-                        max_tokens: remainingTokens,
+                        max_tokens: maxTokens,
                         logprobs: true,
                         top_logprobs: topLogprobs,
                         temperature: temperature,
@@ -759,12 +789,6 @@
                         });
                         return alternatives;
                     });
-                }
-
-                // Remove old tokens from data and display
-                tokensData = tokensData.slice(0, tokenIndex + 1);
-                for (let i = allTokenSpans.length - 1; i > tokenIndex; i--) {
-                    allTokenSpans[i].remove();
                 }
 
                 // Add new tokens with staggered animation
