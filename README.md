@@ -1,16 +1,9 @@
 # Token Probability Visualizer
 
-An interactive web application that visualizes how language models predict the next token, inspired by OpenAI's classic token probability interface.
+An interactive web application that visualizes how language models predict the next token, inspired by Ethan Mollick's image in [Thinking Like an AI](https://www.oneusefulthing.org/p/thinking-like-an-ai).  
 
-## Features
-
-- **Interactive Token Selection**: Click any generated token to see alternative predictions with their probabilities
-- **Dynamic Regeneration**: Select an alternative token to regenerate all subsequent text from that point
-- **Visual Probability Indicators**: Color-coded tokens based on model confidence (green=high, yellow=medium, red=low)
-- **Probability Insights**: Hover over tokens to see position, probability, and number of alternatives
-- **Undo/History**: Track and revert changes with full history support
-- **Advanced Controls**: Adjust temperature, top-p, and presence penalty for customized generation
-- **Smooth Animations**: Polished UI with fade transitions and highlight effects
+It was built entirely through Claude Code web on Nov 19, 2025 for aproximately $4 of free credits. The initial prompt was:
+> I'd like to recreate the interface that OpenAI used to have on the web which stopped each token and showed the probabilities for the next tokens in a drop-down list. I believe that can be created through the OpenAI API (I will supply you a token). I would like a portable HTML file with javascript that implements the functionality. For each shot, it should take a set of words and then give the probabilities for the next word. See the image at this link for example: https://substackcdn.com/image/fetch/$s_!Uk2Q!,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fcfb74661-2025-4694-b0db-a96d2166865e_1098x711.png
 
 ## Usage
 
@@ -48,14 +41,7 @@ This allows you to interactively explore the model's decision-making process and
 - **Try Different Prompts**: The default prompt "The best kind of pet is a" is great for exploring alternatives
 - **Watch the Colors**: Red/yellow tokens indicate uncertainty - interesting places to explore alternatives!
 
-## Design
-
-Built with a modern shadcn-inspired design system featuring:
-- Clean, minimal interface with excellent readability
-- Thoughtful spacing and typography
-- Smooth transitions and animations
-- Accessible color palette
 
 ## License
 
-This is a standalone educational tool. Use responsibly with your own OpenAI API key.
+MIT
