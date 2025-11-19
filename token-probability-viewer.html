@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Probability Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .config-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #10a37f;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .inline-group {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 15px;
+        }
+
+        button {
+            background: #10a37f;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #0d8c6a;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .output-section {
+            margin-top: 30px;
+        }
+
+        .tokens-container {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 20px;
+            min-height: 200px;
+            font-size: 16px;
+            line-height: 1.8;
+            position: relative;
+        }
+
+        .token {
+            display: inline-block;
+            position: relative;
+            padding: 2px 4px;
+            margin: 2px 0;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .token:hover {
+            background: #e3f2fd;
+        }
+
+        .token.active {
+            background: #bbdefb;
+        }
+
+        .probability-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 300px;
+            max-width: 400px;
+            z-index: 1000;
+            margin-top: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .dropdown-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #f5f5f5;
+            font-weight: 600;
+            font-size: 13px;
+            color: #555;
+            border-radius: 6px 6px 0 0;
+        }
+
+        .dropdown-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .dropdown-item:hover {
+            background: #f9f9f9;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .token-text {
+            font-family: 'Courier New', monospace;
+            color: #333;
+            word-break: break-all;
+            flex: 1;
+            margin-right: 15px;
+        }
+
+        .token-prob {
+            color: #10a37f;
+            font-weight: 600;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .prob-bar {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .prob-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10a37f, #0d8c6a);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+            font-style: italic;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #fcc;
+            margin-top: 15px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 12px 15px;
+            border-radius: 6px;
+            border: 1px solid #bbdefb;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        .token-info {
+            display: inline-block;
+            margin-left: 5px;
+            color: #999;
+            font-size: 11px;
+            vertical-align: super;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Token Probability Visualizer</h1>
+        <p class="subtitle">Explore how language models predict the next token</p>
+
+        <div class="config-section">
+            <div class="input-group">
+                <label for="apiKey">OpenAI API Key:</label>
+                <input type="password" id="apiKey" placeholder="sk-...">
+            </div>
+
+            <div class="inline-group">
+                <div class="input-group">
+                    <label for="model">Model:</label>
+                    <select id="model">
+                        <option value="gpt-4">gpt-4</option>
+                        <option value="gpt-4-turbo-preview">gpt-4-turbo-preview</option>
+                        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                        <option value="gpt-3.5-turbo-instruct" selected>gpt-3.5-turbo-instruct</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="maxTokens">Max Tokens:</label>
+                    <input type="text" id="maxTokens" value="50">
+                </div>
+
+                <div class="input-group">
+                    <label for="topLogprobs">Top Alternatives:</label>
+                    <input type="text" id="topLogprobs" value="5">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="prompt">Prompt:</label>
+                <textarea id="prompt" placeholder="Enter your prompt here...">The quick brown fox</textarea>
+            </div>
+
+            <button id="generateBtn" onclick="generate()">Generate with Probabilities</button>
+        </div>
+
+        <div class="info-box">
+            Click on any token to see alternative predictions and their probabilities
+        </div>
+
+        <div class="output-section">
+            <div class="tokens-container" id="tokensContainer">
+                <div class="loading" style="display: none;" id="loading">Generating tokens...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDropdown = null;
+        let tokensData = [];
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.token') && !e.target.closest('.probability-dropdown')) {
+                closeDropdown();
+            }
+        });
+
+        function closeDropdown() {
+            if (currentDropdown) {
+                currentDropdown.remove();
+                currentDropdown = null;
+            }
+            document.querySelectorAll('.token.active').forEach(t => t.classList.remove('active'));
+        }
+
+        function showDropdown(tokenElement, alternatives, tokenIndex) {
+            closeDropdown();
+
+            tokenElement.classList.add('active');
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'probability-dropdown';
+
+            const header = document.createElement('div');
+            header.className = 'dropdown-header';
+            header.textContent = `Alternative tokens (position ${tokenIndex + 1})`;
+            dropdown.appendChild(header);
+
+            alternatives.forEach((alt, index) => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+
+                const tokenText = document.createElement('div');
+                tokenText.className = 'token-text';
+                // Show the actual token with special chars visible
+                const displayToken = alt.token.replace(/\n/g, '\\n').replace(/\t/g, '\\t').replace(/ /g, '·');
+                tokenText.textContent = displayToken || '(empty)';
+
+                const probText = document.createElement('div');
+                probText.className = 'token-prob';
+                const probability = Math.exp(alt.logprob) * 100;
+                probText.textContent = `${probability.toFixed(2)}%`;
+
+                const probBar = document.createElement('div');
+                probBar.className = 'prob-bar';
+                const probBarFill = document.createElement('div');
+                probBarFill.className = 'prob-bar-fill';
+                probBarFill.style.width = `${probability}%`;
+                probBar.appendChild(probBarFill);
+
+                item.appendChild(tokenText);
+                item.appendChild(probText);
+
+                const wrapper = document.createElement('div');
+                wrapper.style.width = '100%';
+                wrapper.appendChild(item);
+                wrapper.appendChild(probBar);
+
+                dropdown.appendChild(wrapper);
+
+                // Allow clicking on alternative to replace token
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    tokenElement.textContent = alt.token;
+                    tokensData[tokenIndex].selectedToken = alt.token;
+                    closeDropdown();
+                });
+            });
+
+            tokenElement.appendChild(dropdown);
+            currentDropdown = dropdown;
+
+            // Position dropdown to prevent overflow
+            const rect = dropdown.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                dropdown.style.left = 'auto';
+                dropdown.style.right = '0';
+            }
+        }
+
+        async function generate() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const model = document.getElementById('model').value;
+            const prompt = document.getElementById('prompt').value;
+            const maxTokens = parseInt(document.getElementById('maxTokens').value) || 50;
+            const topLogprobs = parseInt(document.getElementById('topLogprobs').value) || 5;
+
+            if (!apiKey) {
+                alert('Please enter your OpenAI API key');
+                return;
+            }
+
+            const container = document.getElementById('tokensContainer');
+            const loading = document.getElementById('loading');
+            const generateBtn = document.getElementById('generateBtn');
+
+            container.innerHTML = '';
+            loading.style.display = 'block';
+            container.appendChild(loading);
+            generateBtn.disabled = true;
+            tokensData = [];
+            closeDropdown();
+
+            try {
+                let endpoint, requestBody;
+
+                // Check if model supports the completions endpoint (with logprobs)
+                if (model.includes('instruct') || model.startsWith('text-') || model.startsWith('davinci') || model.startsWith('curie') || model.startsWith('babbage') || model.startsWith('ada')) {
+                    // Use the legacy completions endpoint which supports logprobs
+                    endpoint = 'https://api.openai.com/v1/completions';
+                    requestBody = {
+                        model: model,
+                        prompt: prompt,
+                        max_tokens: maxTokens,
+                        logprobs: topLogprobs,
+                        stream: false,
+                        echo: false
+                    };
+                } else {
+                    // Use chat completions endpoint with logprobs (supported in newer models)
+                    endpoint = 'https://api.openai.com/v1/chat/completions';
+                    requestBody = {
+                        model: model,
+                        messages: [
+                            { role: 'user', content: prompt }
+                        ],
+                        max_tokens: maxTokens,
+                        logprobs: true,
+                        top_logprobs: topLogprobs,
+                        stream: false
+                    };
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error?.message || 'API request failed');
+                }
+
+                const data = await response.json();
+
+                loading.style.display = 'none';
+
+                let tokens, logprobs;
+
+                if (endpoint.includes('completions') && !endpoint.includes('chat')) {
+                    // Legacy completions format
+                    const choice = data.choices[0];
+                    tokens = choice.logprobs.tokens;
+                    logprobs = choice.logprobs.top_logprobs;
+                } else {
+                    // Chat completions format
+                    const choice = data.choices[0];
+                    if (!choice.logprobs || !choice.logprobs.content) {
+                        throw new Error('Model does not support logprobs. Please use gpt-3.5-turbo-instruct or a compatible model.');
+                    }
+                    tokens = choice.logprobs.content.map(item => item.token);
+                    logprobs = choice.logprobs.content.map(item => {
+                        const alternatives = {};
+                        item.top_logprobs.forEach(alt => {
+                            alternatives[alt.token] = alt.logprob;
+                        });
+                        return alternatives;
+                    });
+                }
+
+                // Create a text node for the prompt
+                const promptSpan = document.createElement('span');
+                promptSpan.style.color = '#999';
+                promptSpan.textContent = prompt;
+                container.appendChild(promptSpan);
+
+                // Display each token
+                tokens.forEach((token, index) => {
+                    const tokenSpan = document.createElement('span');
+                    tokenSpan.className = 'token';
+                    tokenSpan.textContent = token;
+
+                    const alternatives = [];
+                    const topLogprobsForToken = logprobs[index];
+
+                    // Sort alternatives by probability
+                    const sortedAlts = Object.entries(topLogprobsForToken)
+                        .map(([tok, logprob]) => ({ token: tok, logprob: logprob }))
+                        .sort((a, b) => b.logprob - a.logprob);
+
+                    alternatives.push(...sortedAlts);
+
+                    tokensData.push({
+                        token: token,
+                        alternatives: alternatives,
+                        selectedToken: token
+                    });
+
+                    tokenSpan.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showDropdown(tokenSpan, alternatives, index);
+                    });
+
+                    container.appendChild(tokenSpan);
+                });
+
+            } catch (error) {
+                loading.style.display = 'none';
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = `Error: ${error.message}`;
+                container.appendChild(errorDiv);
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        // Allow Enter key in prompt to generate
+        document.getElementById('prompt').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                generate();
+            }
+        });
+    </script>
+</body>
+</html>
