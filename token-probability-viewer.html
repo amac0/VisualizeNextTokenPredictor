@@ -648,12 +648,15 @@
                     e.stopPropagation();
                     if (isRegenerating) return;
 
+                    // Save history BEFORE making any changes
+                    saveToHistory();
+
                     tokenElement.textContent = alt.token;
                     tokensData[tokenIndex].selectedToken = alt.token;
                     closeDropdown();
 
-                    // Regenerate from this point
-                    await regenerateFromToken(tokenIndex);
+                    // Regenerate from this point (without saving history again)
+                    await regenerateFromToken(tokenIndex, true);
                 });
             });
 
@@ -668,12 +671,14 @@
             }
         }
 
-        async function regenerateFromToken(tokenIndex) {
+        async function regenerateFromToken(tokenIndex, skipHistorySave = false) {
             if (isRegenerating) return;
             isRegenerating = true;
 
-            // Save current state to history before regenerating
-            saveToHistory();
+            // Save current state to history before regenerating (unless already saved)
+            if (!skipHistorySave) {
+                saveToHistory();
+            }
 
             const apiKey = document.getElementById('apiKey').value.trim();
             const model = document.getElementById('model').value;
