@@ -1330,26 +1330,59 @@
                         <tbody>
                 `;
 
-                // Group alternatives into rows of 3
-                for (let i = 0; i < alternatives.length; i += 3) {
+                // Group alternatives into rows, flowing by column
+                // Calculate number of rows needed (max 5 for 15 items in 3 columns)
+                const numRows = Math.ceil(alternatives.length / 3);
+
+                for (let row = 0; row < numRows; row++) {
                     tableHTML += '<tr>';
 
-                    for (let j = 0; j < 3; j++) {
-                        const alt = alternatives[i + j];
-                        if (alt) {
-                            const probability = Math.exp(alt.logprob) * 100;
-                            const displayToken = alt.token.replace(/\n/g, '\\n').replace(/\t/g, '\\t').replace(/ /g, '·');
-                            tableHTML += `
-                                <td class="token-col"><code class="token-display">${displayToken || '(empty)'}</code></td>
-                                <td><span class="probability-display">${probability.toFixed(2)}%</span></td>
-                            `;
-                        } else {
-                            // Empty cells if we don't have enough alternatives
-                            tableHTML += `
-                                <td class="token-col"></td>
-                                <td></td>
-                            `;
-                        }
+                    // First column pair (ranks 1-5)
+                    const alt1 = alternatives[row];
+                    if (alt1) {
+                        const probability = Math.exp(alt1.logprob) * 100;
+                        const displayToken = alt1.token.replace(/\n/g, '\\n').replace(/\t/g, '\\t').replace(/ /g, '·');
+                        tableHTML += `
+                            <td class="token-col"><code class="token-display">${displayToken || '(empty)'}</code></td>
+                            <td><span class="probability-display">${probability.toFixed(2)}%</span></td>
+                        `;
+                    } else {
+                        tableHTML += `
+                            <td class="token-col"></td>
+                            <td></td>
+                        `;
+                    }
+
+                    // Second column pair (ranks 6-10)
+                    const alt2 = alternatives[row + numRows];
+                    if (alt2) {
+                        const probability = Math.exp(alt2.logprob) * 100;
+                        const displayToken = alt2.token.replace(/\n/g, '\\n').replace(/\t/g, '\\t').replace(/ /g, '·');
+                        tableHTML += `
+                            <td class="token-col"><code class="token-display">${displayToken || '(empty)'}</code></td>
+                            <td><span class="probability-display">${probability.toFixed(2)}%</span></td>
+                        `;
+                    } else {
+                        tableHTML += `
+                            <td class="token-col"></td>
+                            <td></td>
+                        `;
+                    }
+
+                    // Third column pair (ranks 11-15)
+                    const alt3 = alternatives[row + (numRows * 2)];
+                    if (alt3) {
+                        const probability = Math.exp(alt3.logprob) * 100;
+                        const displayToken = alt3.token.replace(/\n/g, '\\n').replace(/\t/g, '\\t').replace(/ /g, '·');
+                        tableHTML += `
+                            <td class="token-col"><code class="token-display">${displayToken || '(empty)'}</code></td>
+                            <td><span class="probability-display">${probability.toFixed(2)}%</span></td>
+                        `;
+                    } else {
+                        tableHTML += `
+                            <td class="token-col"></td>
+                            <td></td>
+                        `;
                     }
 
                     tableHTML += '</tr>';
